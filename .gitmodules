@@ -1,0 +1,3 @@
+[submodule "lib/twinThingPicoESP"]
+	path = lib/twinThingPicoESP
+	url = https://github.com/jondurrant/twinThingPicoESP
