@@ -660,3 +660,10 @@ void MQTTAgent::setConnState(MQTTState s){
 	}
 }
 
+/***
+* Get the FreeRTOS task being used
+* @return
+*/
+TaskHandle_t MQTTAgent::getTask(){
+	return xHandle;
+}

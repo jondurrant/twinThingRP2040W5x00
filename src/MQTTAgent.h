@@ -138,6 +138,11 @@ public:
 	virtual void setObserver(MQTTAgentObserver *obs);
 
 
+	/***
+	 * Get the FreeRTOS task being used
+	 * @return
+	 */
+	virtual TaskHandle_t getTask();
 
 private:
 	/***
