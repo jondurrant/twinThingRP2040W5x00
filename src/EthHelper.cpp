@@ -108,12 +108,15 @@ bool EthHelper::syncRTCwithSNTP(const char **sntpSvrHosts, uint8_t count){
 	uint8_t ip[4];
 	char s[256];
 
-	for (uint8_t i=0; i < count; i++){
-		strcpy(s, sntpSvrHosts[i]);
-		if (dnsClient(ip, s)){
-			if (syncRTCwithSNTP(ip)){
-				printf("SNTP Success host %s\n", sntpSvrHosts[i]);
-				return true;
+	for (uint8_t j=0; j < 3; j++){
+		for (uint8_t i=0; i < count; i++){
+			strcpy(s, sntpSvrHosts[i]);
+			if (dnsClient(ip, s)){
+				if (syncRTCwithSNTP(ip)){
+					printf("SNTP Success host %s\n", sntpSvrHosts[i]);
+					return true;
+				}
+				vTaskDelay(10);
 			}
 		}
 	}
@@ -133,6 +136,10 @@ bool EthHelper::syncRTCwithSNTP(uint8_t *sntpSvrIp){
 	uint8_t tz = 22;
 	uint8_t res, i;
 	datetime d;
+
+	if (!rtc_running()){
+		rtc_init();
+	}
 
 	if( xSemaphore != NULL ){
 		if( xSemaphoreTake( xSemaphore, ( TickType_t ) ETHMUTEXTICKS ) == pdTRUE ){
@@ -169,7 +176,7 @@ bool EthHelper::syncRTCwithSNTP(uint8_t *sntpSvrIp){
 		return false;
 	}
 
-	rtc_init();
+	//rtc_init();
 	datetime_t t = {
 			 .year  = (int16_t)d.yy,
 			 .month = (int8_t) d.mo,
