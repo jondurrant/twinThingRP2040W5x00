@@ -63,9 +63,13 @@ public:
 	bool getMACAddressStr(char *macStr);
 
 
+	void rtcInit();
 	bool syncRTCwithSNTP(uint8_t *sntpSvrIp);
 	bool syncRTCwithSNTP(char *sntpSvrHost);
 	bool syncRTCwithSNTP(const char **sntpSvrHosts, uint8_t count);
+	bool syncRTCwithSNTP();
+
+	void setSNTPServers(const char **sntpSvrHosts, uint8_t count);
 
 	bool isJoined();
 
@@ -112,12 +116,15 @@ private:
 
 	SemaphoreHandle_t xSemaphore;
 
-
+	const char **pSntpSvrHosts = NULL;
+	uint8_t xSntpCount = 0;
 
 
 	static uint32_t gMseCnt;
 
 	static EthHelper *obj;
+
+
 };
 
 #endif /* SRC_ETHHELPER_H_ */

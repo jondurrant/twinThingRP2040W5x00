@@ -132,14 +132,38 @@ bool EthHelper::syncRTCwithSNTP(char *sntpSvrHost){
 	return false;
 }
 
+void EthHelper::rtcInit(){
+	datetime_t t;
+	rtc_init();
+	t.year  = 2000;
+	t.month =  1;
+	t.day   =  1;
+	t.hour  =  1;
+	t.min   =  0;
+	t.sec   =  0;
+	if(!rtc_set_datetime(&t)){
+		printf("Init date invali\n");
+	}
+
+	if (rtc_get_datetime(&t)){
+		printf("Init date to %d-%d-%d %d:%d:%d\n",
+				t.year,
+				t.month,
+				t.day,
+				t.hour,
+				t.min,
+				t.sec
+				);
+	} else {
+		printf("RTC Not running\n");
+	}
+}
+
 bool EthHelper::syncRTCwithSNTP(uint8_t *sntpSvrIp){
 	uint8_t tz = 22;
 	uint8_t res, i;
 	datetime d;
 
-	if (!rtc_running()){
-		rtc_init();
-	}
 
 	if( xSemaphore != NULL ){
 		if( xSemaphoreTake( xSemaphore, ( TickType_t ) ETHMUTEXTICKS ) == pdTRUE ){
@@ -522,3 +546,15 @@ uint32_t EthHelper::tcpSockWrite(uint8_t sock, uint8_t *buf, size_t bytesToSend)
 	 return dataOut;
 }
 
+
+void EthHelper::setSNTPServers(const char **sntpSvrHosts, uint8_t count){
+	pSntpSvrHosts = sntpSvrHosts;
+	xSntpCount = count;
+}
+
+bool EthHelper::syncRTCwithSNTP(){
+	if (pSntpSvrHosts != NULL){
+		return syncRTCwithSNTP(pSntpSvrHosts, xSntpCount);
+	}
+	return false;
+}
