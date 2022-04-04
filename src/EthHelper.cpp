@@ -112,11 +112,14 @@ bool EthHelper::syncRTCwithSNTP(const char **sntpSvrHosts, uint8_t count){
 		for (uint8_t i=0; i < count; i++){
 			strcpy(s, sntpSvrHosts[i]);
 			if (dnsClient(ip, s)){
+				printf("SNTP for %s\n", s);
 				if (syncRTCwithSNTP(ip)){
 					printf("SNTP Success host %s\n", sntpSvrHosts[i]);
 					return true;
 				}
-				vTaskDelay(10);
+				//vTaskDelay(10);
+			} else {
+				printf("SNTP DNS failed for %s\n", s);
 			}
 		}
 	}
@@ -127,6 +130,7 @@ bool EthHelper::syncRTCwithSNTP(const char **sntpSvrHosts, uint8_t count){
 bool EthHelper::syncRTCwithSNTP(char *sntpSvrHost){
 	uint8_t ip[4];
 	if (dnsClient(ip, sntpSvrHost)){
+		//printf("SNTP for %s\n", sntpSvrHost);
 		return syncRTCwithSNTP(ip);
 	}
 	return false;
@@ -170,7 +174,7 @@ bool EthHelper::syncRTCwithSNTP(uint8_t *sntpSvrIp){
 
 			SNTP_init(SOCKET_SNTP, sntpSvrIp, tz, pEthernetBuf );
 
-			for (uint8_t i=0; i < 5; i++){
+			for (uint32_t i=0; i < 0x10000; i++){
 				res = SNTP_run(&d);
 				if (d.yy >= 2022){
 					break;
