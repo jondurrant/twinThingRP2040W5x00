@@ -231,6 +231,7 @@ private:
 	const char * pPasswd;
 	const char * pId;
 	const char * pTarget = NULL;
+	char xMacStr[14];
 	uint16_t xPort = 1883 ;
 	bool xSsl = false;
 	bool xRecon = false;

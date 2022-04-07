@@ -31,6 +31,7 @@ target_include_directories(twinThingRP2040W5x00 INTERFACE
 # Add the standard library to the build
 target_link_libraries(twinThingRP2040W5x00 INTERFACE 
 	pico_stdlib 
+	pico_unique_id
 	hardware_adc 
 	json_maker 
 	tiny_json

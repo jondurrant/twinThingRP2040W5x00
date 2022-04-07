@@ -142,14 +142,25 @@ void MQTTAgent::incomingPublishCallback( MQTTAgentContext_t * pMqttAgentContext,
  *
  */
 void MQTTAgent::credentials(const char * user, const char * passwd, const char * id){
-	this->pUser = user;
-	this->pPasswd = passwd;
+	if (strcmp(user, "MAC") == 0){
+		pEth->getMACAddressStr(xMacStr);
+		this->pUser = xMacStr;
+	} else {
+		this->pUser = user;
+	}
+	if (strcmp(passwd, "MAC") == 0){
+		pEth->getMACAddressStr(xMacStr);
+		this->pPasswd = xMacStr;
+	} else {
+		this->pPasswd = passwd;
+	}
+
 	if (id != NULL){
 		this->pId = id;
 	} else {
-		this->pId = user;
+		this->pId = this->pUser;
 	}
-	LogDebug(("MQTT Credentials Id=%s, usr=%s\n", this->pId, this->pUser));
+	LogInfo(("MQTT Credentials Id=%s, usr=%s\n", this->pId, this->pUser));
 
 	if (pWillTopic == NULL){
 		pWillTopic = (char *)pvPortMalloc( MQTTTopicHelper::lenLifeCycleTopic(this->pId, MQTT_TOPIC_LIFECYCLE_OFFLINE));

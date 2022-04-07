@@ -13,15 +13,22 @@
 
 #include "sntp.h"
 #include "hardware/rtc.h"
+#include "pico/unique_id.h"
 
 #define SOCKET_SNTP 2
 #define SOCKET_DNS  1
 #define SOCKET_DHCP 0
 
+/***
+* Constructor, requires init to be called afterwoods
+*/
 EthHelper::EthHelper() {
 	EthHelper::obj = this;
 }
 
+/***
+ * Enable Mutex check for any ethernet operation.
+ */
 void EthHelper::enableMutex(){
 
 	xSemaphore = xSemaphoreCreateMutex();
@@ -34,6 +41,10 @@ void EthHelper::enableMutex(){
 	}
 }
 
+/***
+ * Initialise and provide a buffer of length ETHERNET_BUF_MAX_SIZE
+ * @param pBuf
+ */
 void EthHelper::init(uint8_t * pBuf){
 	pEthernetBuf = pBuf;
 
@@ -49,7 +60,9 @@ void EthHelper::init(uint8_t * pBuf){
 }
 
 
-
+/***
+ * Destructor
+ */
 EthHelper::~EthHelper() {
 	if (xSemaphore != NULL){
 		vSemaphoreDelete( xSemaphore );
@@ -90,29 +103,78 @@ bool EthHelper::getIPAddressStr(char *ips){
 
 }
 
-
+/***
+ * Get the mac address in string form
+ * @param macStr
+ * @return
+ */
 bool EthHelper::getMACAddressStr(char *macStr){
 
 	for (uint8_t i=0; i < 6; i++ ){
 		if (xNetInfo.mac[i]<16){
-			sprintf(&macStr[i*2], "0%d", xNetInfo.mac[i]);
+			sprintf(&macStr[i*2], "0%X", xNetInfo.mac[i]);
 		} else {
-			sprintf(&macStr[i*2], "%d", xNetInfo.mac[i]);
+			sprintf(&macStr[i*2], "%X", xNetInfo.mac[i]);
 		}
 	}
 	macStr[13]=0;
 	return true;
 }
 
+/***
+ * Get the mac address as uint8_t array
+ * @param mac - array of uint8_t[6] to write to
+ * @return
+ */
+bool EthHelper::getMACAddress(uint8_t *mac){
+	memcpy(mac, xNetInfo.mac, 6);
+	return true;
+}
+
+/***
+ * Set the mac address as uint8_t array
+ * @param mac - array of uint8_t[6]
+ * If Null then a default Mac address is used based in Pico Serial
+ * @return
+ */
+bool EthHelper::setMACAddress(uint8_t *mac){
+	pico_unique_board_id_t id;
+	if (mac != NULL ){
+		memcpy(xNetInfo.mac, mac, 6);
+	} else {
+		pico_get_unique_board_id(&id);
+		xNetInfo.mac[4] = id.id[6];
+		xNetInfo.mac[5] = id.id[7];
+
+		printf("Set MAC to: ");
+		for (uint8_t i=0; i < 6; i++){
+			if (xNetInfo.mac[i] < 16){
+				printf("0x%:", xNetInfo.mac[i]);
+			} else {
+				printf("0%:", xNetInfo.mac[i]);
+			}
+		}
+		printf("\n");
+	}
+	return true;
+}
+
+
+/***
+ * Set RTC from SNTP Servers
+ * @param sntpSvrHosts - array of strings
+ * @param count - number of strings in array
+ * @return true if sync was successful
+ */
 bool EthHelper::syncRTCwithSNTP(const char **sntpSvrHosts, uint8_t count){
 	uint8_t ip[4];
-	char s[256];
+	char s[256]; // Local buffer as WizNet library does not use const properly
 
 	for (uint8_t j=0; j < 3; j++){
 		for (uint8_t i=0; i < count; i++){
 			strcpy(s, sntpSvrHosts[i]);
 			if (dnsClient(ip, s)){
-				printf("SNTP for %s\n", s);
+				//printf("SNTP for %s\n", s);
 				if (syncRTCwithSNTP(ip)){
 					printf("SNTP Success host %s\n", sntpSvrHosts[i]);
 					return true;
@@ -126,7 +188,11 @@ bool EthHelper::syncRTCwithSNTP(const char **sntpSvrHosts, uint8_t count){
 	return false;
 }
 
-
+/***
+ * Set RTC from SNTP Server
+ * @param sntpSvrHost - Host name as string
+ * @return true if sync was successful
+ */
 bool EthHelper::syncRTCwithSNTP(char *sntpSvrHost){
 	uint8_t ip[4];
 	if (dnsClient(ip, sntpSvrHost)){
@@ -136,6 +202,9 @@ bool EthHelper::syncRTCwithSNTP(char *sntpSvrHost){
 	return false;
 }
 
+/***
+ * Initialise the RTC ready for SNTP
+ */
 void EthHelper::rtcInit(){
 	datetime_t t;
 	rtc_init();
@@ -163,6 +232,12 @@ void EthHelper::rtcInit(){
 	}
 }
 
+/***
+ * Set RTC from SNTP Servers
+ * @param sntpSvrHosts - array of strings
+ * @param count - number of strings in array
+ * @return true if sync was successful
+ */
 bool EthHelper::syncRTCwithSNTP(uint8_t *sntpSvrIp){
 	uint8_t tz = 22;
 	uint8_t res, i;
@@ -223,11 +298,20 @@ bool EthHelper::syncRTCwithSNTP(uint8_t *sntpSvrIp){
 
 
 
+/***
+ * Is Ethernet plug in and do we have an IP address
+ * @return
+ */
 bool EthHelper::isJoined(){
 
 	return (isPluggedIn() && (xNetInfo.ip[0] != 0));
 }
 
+
+/***
+ * Is ethernet plugged in
+ * @return
+ */
 bool EthHelper::isPluggedIn(){
 	uint8_t link;
 
@@ -264,7 +348,10 @@ void EthHelper::cbRepeatingTimer(void)
     }
 }
 
-
+/***
+ * Run DHCP to update the ip address
+ * @return
+ */
 bool EthHelper::dhcpClient(){
 	bool res = false;
 	if( xSemaphore != NULL ){
@@ -281,6 +368,10 @@ bool EthHelper::dhcpClient(){
 	return res;
 }
 
+/***
+ * DHCP renewal without mutex
+ * @return
+ */
 bool EthHelper::dhcpClientLocal(){
     int retval = 0;
     uint8_t link;
@@ -369,7 +460,9 @@ bool EthHelper::dhcpClientLocal(){
 }
 
 
-
+/***
+ * Initailise DHCP
+ */
 void EthHelper::dhcpInit(void)
 {
     printf(" JD: DHCP client running\n");
@@ -380,11 +473,16 @@ void EthHelper::dhcpInit(void)
 
 }
 
+/***
+ * Call back on dhcp assign
+ */
 void EthHelper::cbDhcpAssign(void){
 	EthHelper::obj->dhcpAssign();
 }
 
-
+/***
+ * Handle dhcp assignment
+ */
 void EthHelper::dhcpAssign(void){
     getIPfromDHCP(xNetInfo.ip);
     getGWfromDHCP(xNetInfo.gw);
@@ -397,18 +495,26 @@ void EthHelper::dhcpAssign(void){
     network_initialize(xNetInfo); // apply from DHCP
 
     print_network_information(xNetInfo);
-    printf(" JD: DHCP leased time : %ld seconds\n", getDHCPLeasetime());
+    printf("DHCP leased time : %ld seconds\n", getDHCPLeasetime());
 }
 
+/***
+ * Callback if mac address conflict
+ */
 void EthHelper::cbDhcpConflict(void)
 {
-    printf(" JD: Conflict IP from DHCP\n");
+    printf("Conflict IP from DHCP\n");
 }
 
 EthHelper *EthHelper::obj = NULL;
 uint32_t EthHelper::gMseCnt = 0;
 
-
+/***
+ * Perform a DNS lookup
+ * @param ip - uint8_t[4] ip address of host
+ * @param host - string host name to lookup
+ * @return true if successful
+ */
 bool EthHelper::dnsClient(uint8_t *ip, const char * host){
 	 char s[256];
 	 strcpy(s, host);
@@ -433,7 +539,14 @@ bool EthHelper::dnsClient(uint8_t *ip, const char * host){
 	 return res;
 }
 
-
+/***
+ * Connect a TCP Socket
+ * @param sock - Socket id
+ * @param localPort - local port number
+ * @param hostIP - host ip address
+ * @param hostPort - host port number
+ * @return true if successful
+ */
 bool EthHelper::tcpSockConnect(uint8_t sock, uint16_t localPort, uint8_t * hostIP, uint16_t hostPort){
 	 bool res = true;
 	 int8_t b;
@@ -473,6 +586,11 @@ bool EthHelper::tcpSockConnect(uint8_t sock, uint16_t localPort, uint8_t * hostI
 	 return res;
 }
 
+/***
+ * Close a TCP socket
+ * @param sock = socket id
+ * @return true if successful
+ */
 bool EthHelper::tcpSockClose(uint8_t sock){
 	bool res = false;
 	if( xSemaphore != NULL ){
@@ -489,7 +607,13 @@ bool EthHelper::tcpSockClose(uint8_t sock){
 	 return res;
 }
 
-
+/***
+ * Read from socket without mutex
+ * @param sock
+ * @param buf
+ * @param bytesToRecv
+ * @return
+ */
 uint32_t EthHelper::tcpSockReadLocal(uint8_t sock, uint8_t *buf, size_t bytesToRecv){
 	int32_t dataIn=0;
 	uint16_t remaining=0;
@@ -517,6 +641,13 @@ uint32_t EthHelper::tcpSockReadLocal(uint8_t sock, uint8_t *buf, size_t bytesToR
 	return dataIn;
 }
 
+/***
+ * Read data from TCP Socket. Returns 0 if no data available.
+ * @param sock - socket id
+ * @param buf - bugger to read into
+ * @param bytesToRecv - length to read (must fit in buf
+ * @return bytes read. 0 if none. Negative if error
+ */
 uint32_t EthHelper::tcpSockRead(uint8_t sock, uint8_t *buf, size_t bytesToRecv){
 	int32_t dataIn=0;
 
@@ -534,6 +665,13 @@ uint32_t EthHelper::tcpSockRead(uint8_t sock, uint8_t *buf, size_t bytesToRecv){
 	 return dataIn;
 }
 
+/***
+ * Write data to TCP Socket
+ * @param sock - socket id
+ * @param buf - buffer to write from
+ * @param bytesToSend - number of bytes to write
+ * @return number of bytes writtem
+ */
 uint32_t EthHelper::tcpSockWrite(uint8_t sock, uint8_t *buf, size_t bytesToSend){
 	int32_t dataOut=0;
 
@@ -551,11 +689,20 @@ uint32_t EthHelper::tcpSockWrite(uint8_t sock, uint8_t *buf, size_t bytesToSend)
 }
 
 
+/***
+ * Set list of servers for SNTP operations
+ * @param sntpSvrHosts - array of strings
+ * @param count - number of items in array
+ */
 void EthHelper::setSNTPServers(const char **sntpSvrHosts, uint8_t count){
 	pSntpSvrHosts = sntpSvrHosts;
 	xSntpCount = count;
 }
 
+/***
+ * Set RTC fro SNTP Server, using previously provided list of servers
+ * @return true if sync was successful
+ */
 bool EthHelper::syncRTCwithSNTP(){
 	if (pSntpSvrHosts != NULL){
 		return syncRTCwithSNTP(pSntpSvrHosts, xSntpCount);
