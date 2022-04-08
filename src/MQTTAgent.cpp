@@ -1,6 +1,8 @@
 /*
  * MQTTAgent.cpp
  *
+ * MQTT Agent to manage MQTT connection and messaging
+ *
  *  Created on: 15 Nov 2021
  *      Author: jondurrant
  */
@@ -20,8 +22,8 @@ const char * MQTTAgent::ONLINEPAYLOAD = "{'online':1}";
 
 /***
  * Constructor
- * @param sockNum
- * @param eth
+ * @param sockNum - Socket Number to use
+ * @param eth - Ethernet helper for communicating to hardware
  */
 MQTTAgent::MQTTAgent(uint8_t sockNum, EthHelper *eth) {
 	pEth = eth;
@@ -137,8 +139,8 @@ void MQTTAgent::incomingPublishCallback( MQTTAgentContext_t * pMqttAgentContext,
  * Set credentials
  * @param user - string pointer. Not copied so pointer must remain valid
  * @param passwd - string pointer. Not copied so pointer must remain valid
- * @param id - string pointer. Not copied so pointer must remain valid. I
- * f not provide ID will be user
+ * @param id - string pointer. Not copied so pointer must remain valid.
+ * If not provide ID will be user
  *
  */
 void MQTTAgent::credentials(const char * user, const char * passwd, const char * id){

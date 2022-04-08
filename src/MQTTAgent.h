@@ -1,6 +1,8 @@
 /*
  * MQTTAgent.h
  *
+ * MQTT Agent to manage MQTT connection and messaging
+ *
  *  Created on: 15 Nov 2021
  *      Author: jondurrant
  */
@@ -41,11 +43,21 @@ extern "C" {
 #endif
 
 
+// Enumerator used to control the state machine at centre of agent
 enum MQTTState {  Offline, TCPReq, TCPConned, MQTTReq, MQTTConned, MQTTRecon, Online};
 
 class MQTTAgent: public MQTTInterface{
 public:
+	/***
+	 * Constructor
+	 * @param sockNum - Socket Number to use
+	 * @param eth - Ethernet helper for communicating to hardware
+	 */
 	MQTTAgent(uint8_t sockNum, EthHelper *eth);
+
+	/***
+	 * Distructor
+	 */
 	virtual ~MQTTAgent();
 
 	/***
@@ -59,7 +71,7 @@ public:
 	void credentials(const char * user, const char * passwd, const char * id = NULL );
 
 	/***
-	 * Connect to mqtt server
+	 * Connect to mqtt server - Actual connection is done in the state machine so task must be running
 	 * @param target - hostname or ip address, Not copied so pointer must remain valid
 	 * @param port - port number
 	 * @param ssl - unused
@@ -67,10 +79,10 @@ public:
 	 */
 	 bool connect(const char * target, uint16_t  port, bool recon=false, bool ssl=false);
 
-	 /***
-	 *  create the vtask, will get picked up by scheduler
-	 *
-	 *  */
+	/***
+	 * Start the task running
+	 * @param priority - priority to run within FreeRTOS
+	 */
 	void start(UBaseType_t priority = tskIDLE_PRIORITY);
 
 	/***
@@ -80,7 +92,7 @@ public:
 	void stop();
 
 	/***
-	 * Returns the id of the client
+	 * Returns the id of the MQTT client
 	 * @return
 	 */
 	virtual const char * getId();
@@ -126,7 +138,8 @@ public:
 
 
 	/***
-	 * Set the rotuer object
+	 * Set the router object
+	 * Router objects handle any message arriving
 	 * @param pRouter
 	 */
 	void setRouter( MQTTRouter *pRouter = NULL);
@@ -227,6 +240,8 @@ private:
 	EthHelper *pEth = NULL;
 	NetworkContext_t xNetworkContext;
 	TCPTransport xTcpTrans;
+
+	//MQTT Server and credentials
 	const char * pUser;
 	const char * pPasswd;
 	const char * pId;
@@ -235,8 +250,23 @@ private:
 	uint16_t xPort = 1883 ;
 	bool xSsl = false;
 	bool xRecon = false;
+
+	//MQTT Will object
+	static const char * WILLTOPICFORMAT;
+	char *pWillTopic = NULL;
+	static const char * WILLPAYLOAD;
+	MQTTPublishInfo_t xWillInfo;
+
+	//Topics and payload for connection
+	static const char * ONLINEPAYLOAD;
+	char *pOnlineTopic = NULL;
+	char *pKeepAliveTopic = NULL;
+
+
+	//Router object to handle all sub messages
 	MQTTRouter * pRouter = NULL;
 
+	// Buffers and queues
 	uint8_t xNetworkBuffer[ MQTT_AGENT_NETWORK_BUFFER_SIZE ];
 	uint8_t xStaticQueueStorageArea[ MQTT_AGENT_COMMAND_QUEUE_LENGTH * sizeof( MQTTAgentCommand_t * ) ];
 	StaticQueue_t xStaticQueueStructure;
@@ -244,21 +274,15 @@ private:
 	MQTTAgentContext_t xGlobalMqttAgentContext;
 	TaskHandle_t xHandle = NULL;
 
+	//State machine state
 	MQTTState xConnState = Offline;
 
-	static const char * WILLTOPICFORMAT;
-	char *pWillTopic = NULL;
-	static const char * WILLPAYLOAD;
-	MQTTPublishInfo_t xWillInfo;
-	static const char * ONLINEPAYLOAD;
-	char *pOnlineTopic = NULL;
-	char *pKeepAliveTopic = NULL;
 
-	//Temp used bu publish
+	//Storage for publishing message
 	MQTTAgentCommandInfo_t xCommandInfo;
 	MQTTPublishInfo_t xPublishInfo;
 
-
+	//Storage for subscribing to message
 	MQTTAgentCommandInfo_t xSubCommandInfo;
 	MQTTSubscribeInfo_t xSubscribeInfo[MAXSUBS] ;
 	MQTTAgentSubscribeArgs_t xSubscribeArgs [MAXSUBS];

@@ -1,6 +1,8 @@
 /*
  * TCPTransport.cpp
  *
+ *TCP Socket transport.
+ *TCP
  *  Created on: 5 Mar 2022
  *      Author: jondurrant
  */
@@ -9,20 +11,35 @@
 #include <stdlib.h>
 #include "MQTTConfig.h"
 
+/***
+ * Constructors
+ * @param sockNum - socket id
+ * @param eth - Ethernet Helper object
+ */
 TCPTransport::TCPTransport(uint8_t sockNum, EthHelper *eth) {
 	init(xSock, pEth);
 }
 
+/***
+ * Constructor - requires init to be called
+ */
 TCPTransport::TCPTransport(){
 	//NOP
 }
 
-
+/***
+ * Provide Socket number and ethernet helper
+ * @param sockNum - socker id
+ * @param eth - Ethernet Helper object
+ */
 void TCPTransport::init(uint8_t sockNum, EthHelper *eth) {
 	xSock = sockNum;
 	pEth = eth;
 }
 
+/***
+ * Distructor
+ */
 TCPTransport::~TCPTransport() {
 	// TODO Auto-generated destructor stub
 }
@@ -36,6 +53,13 @@ uint32_t TCPTransport::getCurrentTime(){
 	return to_ms_since_boot(get_absolute_time ());
 }
 
+/***
+ * Send data to socket in format used by FreeRTOS MQTT Lib
+ * @param pNetworkContext - pointer to this object
+ * @param pBuffer - buffer to send from
+ * @param bytesToSend - number of bytes to send
+ * @return number of bytes sent
+ */
 int32_t TCPTransport::transSend(NetworkContext_t * pNetworkContext, const void * pBuffer, size_t bytesToSend){
 	uint32_t dataOut;
 	//dataOut = send(xSock, (uint8_t *)pBuffer, bytesToSend);
@@ -46,60 +70,51 @@ int32_t TCPTransport::transSend(NetworkContext_t * pNetworkContext, const void *
 	return dataOut;
 }
 
-
+/***
+ * Read data from socket
+ * @param pNetworkContext - pointer to this object
+ * @param pBuffer - buffer to read into
+ * @param bytesToRecv - bytes to read
+ * @return returns number of bytes read. 0 if none waiting. negative if error
+ */
 int32_t TCPTransport::transRead(NetworkContext_t * pNetworkContext, void * pBuffer, size_t bytesToRecv){
 	int32_t dataIn=0;
 
 	dataIn = pEth->tcpSockRead(xSock, (uint8_t *)pBuffer, bytesToRecv);
 	return dataIn;
-
-
-/*
-	uint16_t remaining=0;
-	int8_t res;
-	uint8_t status;
-
-	getsockopt(xSock,SO_STATUS, &status);
-	if (status != SOCK_ESTABLISHED){
-		printf("SOCKET NOT OPEN\n");
-		return -1;
-	}
-
-	res = getsockopt(xSock,SO_REMAINSIZE, &remaining);
-	if (res != SOCK_OK){
-		//printf("FAIL\b");
-		return res;
-	}
-
-	if  (remaining > 0){
-		dataIn = recv(xSock, (uint8_t *)pBuffer, bytesToRecv);
-
-		//printf("Read(%d)=%d\n", bytesToRecv, dataIn);
-
-		if (dataIn == SOCK_BUSY){
-			dataIn = 0;
-		}
-	}
-
-	//printf("transRead(%d)=%d\n", bytesToRecv, dataIn);
-	return dataIn;
-*/
 }
 
-
+/***
+ * Send data to socket in format used by FreeRTOS MQTT Lib
+ * @param pNetworkContext - pointer to this object
+ * @param pBuffer - buffer to send from
+ * @param bytesToSend - number of bytes to send
+ * @return number of bytes sent
+ */
 int32_t TCPTransport::staticSend(NetworkContext_t * pNetworkContext, const void * pBuffer, size_t bytesToSend){
 	TCPTransport *t = (TCPTransport *)pNetworkContext->tcpTransport;
 	return t->transSend(pNetworkContext, pBuffer, bytesToSend);
 }
 
 
-
+/***
+ * Read data from socket
+ * @param pNetworkContext - pointer to this object
+ * @param pBuffer - buffer to read into
+ * @param bytesToRecv - bytes to read
+ * @return returns number of bytes read. 0 if none waiting. negative if error
+ */
 int32_t TCPTransport::staticRead(NetworkContext_t * pNetworkContext, void * pBuffer, size_t bytesToRecv){
 	TCPTransport *t = (TCPTransport *)pNetworkContext->tcpTransport;
 	return t->transRead(pNetworkContext, pBuffer, bytesToRecv);
 }
 
-
+/***
+ * Connect TCP Socket
+ * @param host - hostname
+ * @param port - port number
+ * @return true if successful
+ */
 bool TCPTransport::transConnect(const char * host, uint16_t port){
 	if (!pEth->dnsClient(xHost, host)){
 		return false;
@@ -107,6 +122,12 @@ bool TCPTransport::transConnect(const char * host, uint16_t port){
 	return transConnect(xHost, port);
 }
 
+/***
+ * Connect TCP Socket
+ * @param ip - ip address
+ * @param port - port
+ * @return
+ */
 bool TCPTransport::transConnect(uint8_t * ip, uint16_t port){
 	int8_t res;
 
@@ -115,27 +136,22 @@ bool TCPTransport::transConnect(uint8_t * ip, uint16_t port){
 	}
 
 	return pEth->tcpSockConnect(xSock, 1080, xHost, port);
-/*
-	res = socket(xSock, Sn_MR_TCP, 1080, SF_TCP_NODELAY);
-	if (res != xSock){
-		LogError(("Socket %d", res));
-		return false;
-	}
-	res = connect(xSock, xHost, port);
-	if (res != SOCK_OK){
-		LogError(("Socket connect error %d", res));
-		return false;
-	}
-	return true;
-*/
 }
 
+/***
+ * Get status of socket
+ * @return
+ */
 uint8_t TCPTransport::status(){
 	uint8_t stat;
 	getsockopt(xSock,SO_STATUS, &stat);
 	return stat;
 }
 
+/***
+ * Close Socket
+ * @return
+ */
 bool TCPTransport::transClose(){
 	pEth->tcpSockClose(xSock);
 	//disconnect(xSock);

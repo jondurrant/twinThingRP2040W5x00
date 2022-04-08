@@ -1,7 +1,7 @@
 /*
  * TCPTransport.h
  *
- * TCP Socket transport
+ * TCP Socket transport.
  *
  *  Created on: 5 Mar 2022
  *      Author: jondurrant

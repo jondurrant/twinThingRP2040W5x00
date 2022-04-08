@@ -34,7 +34,7 @@ extern "C" {
 #endif
 
 #ifndef ETHMUTEXTICKS
-#define ETHMUTEXTICKS 100
+#define ETHMUTEXTICKS 10
 #endif
 
 /* Buffer */
